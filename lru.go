@@ -55,7 +55,7 @@ func New(shard uint32, max_entries int64) *LruCache {
         caches[i] = make(map[string]*list.Element)
     }
 
-    return &lruCache{
+    return &LruCache{
         max:    max_entries,
         shard:  shard,
         mxs:    mxs,
