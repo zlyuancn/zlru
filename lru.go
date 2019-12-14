@@ -27,7 +27,7 @@ type entry struct {
 }
 
 // LRU缓存, 它的所有方法都是非并发安全的, 需要调用者主动控制
-type lruCache struct {
+type LruCache struct {
     count int64 // 当前条目数
     max   int64 // 最大条目数
 
@@ -40,7 +40,7 @@ type lruCache struct {
 // 新建一个缓存
 // shard表示分片数量, 它将key做hash取模分配到指定的分片上
 // max_entries表示最大条目数, 如果max_entries是0, 新增条目超出最大条目数时不会自动删除过旧的条目
-func New(shard uint32, max_entries int64) *lruCache {
+func New(shard uint32, max_entries int64) *LruCache {
     if shard == 0 {
         shard = uint32(runtime.NumCPU())
     }
@@ -64,14 +64,14 @@ func New(shard uint32, max_entries int64) *lruCache {
     }
 }
 
-func (m *lruCache) getMM(key string) (*sync.Mutex, *list.List, map[string]*list.Element) {
+func (m *LruCache) getMM(key string) (*sync.Mutex, *list.List, map[string]*list.Element) {
     hash := crc32.ChecksumIEEE([]byte(key))
     i := hash % m.shard
     return m.mxs[i], m.lls[i], m.caches[i]
 }
 
 // 添加一个条目
-func (m *lruCache) Add(key string, value interface{}) {
+func (m *LruCache) Add(key string, value interface{}) {
     mx, ll, cache := m.getMM(key)
     mx.Lock()
 
@@ -98,7 +98,7 @@ func (m *lruCache) Add(key string, value interface{}) {
 }
 
 // 获取指定key的条目的值
-func (m *lruCache) Get(key string) (value interface{}, ok bool) {
+func (m *LruCache) Get(key string) (value interface{}, ok bool) {
     mx, ll, cache := m.getMM(key)
     mx.Lock()
 
@@ -113,12 +113,12 @@ func (m *lruCache) Get(key string) (value interface{}, ok bool) {
 }
 
 // 返回缓存中的条目数
-func (m *lruCache) Len() int64 {
+func (m *LruCache) Len() int64 {
     return atomic.LoadInt64(&m.count)
 }
 
 // 删除指定key的条目
-func (m *lruCache) Remove(key string) {
+func (m *LruCache) Remove(key string) {
     mx, ll, cache := m.getMM(key)
     mx.Lock()
     if el, ok := cache[key]; ok {
@@ -130,7 +130,7 @@ func (m *lruCache) Remove(key string) {
 }
 
 // 删除一段时间内未被使用的条目, 最多删除max_count条
-func (m *lruCache) RemoveOldest(t int64, max_count int) int {
+func (m *LruCache) RemoveOldest(t int64, max_count int) int {
     lifeline := time.Now().UnixNano() - t
     if max_count <= 0 {
         if t <= 0 {
@@ -200,7 +200,7 @@ func (m *lruCache) RemoveOldest(t int64, max_count int) int {
 }
 
 // 清除所有缓存, 注意: 并发下清空同时Add是允许的, 所以清空后的长度不一定是0
-func (m *lruCache) Clear() int {
+func (m *LruCache) Clear() int {
     out := 0
     for s := uint32(0); s < m.shard; s++ {
         mx, ll := m.mxs[s], m.lls[s]
@@ -217,6 +217,6 @@ func (m *lruCache) Clear() int {
 }
 
 // 返回允许最大条目数
-func (m *lruCache) MaxEntries() int64 {
+func (m *LruCache) MaxEntries() int64 {
     return m.max
 }
